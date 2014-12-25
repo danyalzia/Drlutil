@@ -1,19 +1,16 @@
 /**
+ * D port of rlutil.h
+ * https://github.com/tapio/rlutil
+ * 
  * About: Description
  * This file provides some useful utilities for console mode
  * roguelike game development with C and C++. It is aimed to
  * be cross-platform (at least Windows and Linux).
  *
- * $(B Important notes):
- * $(UL
- * $(LI Font styles have no effect on windows platform.)
- * $(LI Light background colors are not supported. Non-light equivalents are used on Posix platforms.)
- * )
- *
  * License:
  * <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License</a>
  * Authors:
- * <a href="http://github.com/robik">Robert 'Robik' Pasiński</a>
+ * <a href="http://github.com/danyalzia">Danyal Zia</a>
  */
 
 module rlutil;
@@ -24,25 +21,27 @@ import std.string : toStringz;
 import std.c.stdio;
 import std.c.stdlib;
 
-version(Windows)
+/// Define: RLUTIL_USE_ANSI
+/// Define this to use ANSI escape sequences also on Windows
+/// (defaults to using WinAPI instead).
+enum RLUTIL_USE_ANSI = true;
+
+version (Windows)
     enum Windows = true;
 else
     enum Windows = false;
 
-version(Linux)
+version (Posix)
     enum Linux = true;
 else
     enum Linux = false;
-    
+
 version (Windows) {
 	import std.c.windows.windows;
 }
 
 version (Posix) {
-	import std.stdio,
-	std.conv,
-	std.string,
-	core.sys.posix.unistd,
+	import core.sys.posix.unistd,
 	core.sys.posix.sys.ioctl,
 	core.sys.posix.termios,
 	core.sys.posix.fcntl,
@@ -50,11 +49,6 @@ version (Posix) {
 }
 
 import core.sys.linux.termios, core.sys.posix.termios;
-
-/// Define: RLUTIL_USE_ANSI
-/// Define this to use ANSI escape sequences also on Windows
-/// (defaults to using WinAPI instead).
-enum RLUTIL_USE_ANSI = true;
 
 alias RLUTIL_STRING_T = string;
 
@@ -100,9 +94,9 @@ int kbhit() {
 
 /// Function: gotoxy
 /// Same as <rlutil.locate>.
-//void gotoxy(int x, int y) {
-	//locate(x,y);
-//}
+void gotoxy(int x, int y) {
+	locate(x,y);
+}
 
 /**
  * Enums: Color codes
@@ -181,32 +175,6 @@ RLUTIL_STRING_T ANSI_LIGHTBLUE = "\033[01;34m";
 RLUTIL_STRING_T ANSI_LIGHTMAGENTA = "\033[01;35m";
 RLUTIL_STRING_T ANSI_LIGHTCYAN = "\033[01;36m";
 RLUTIL_STRING_T ANSI_WHITE = "\033[01;37m";
-
-/// Function: getANSIColor
-/// Return ANSI color escape sequence for specified number 0-15.
-///
-/// See <Color Codes>
-string getANSIColor(const(int) c) {
-	switch (c) {
-		case 0 : return ANSI_BLACK;
-		case 1 : return ANSI_BLUE; // non-ANSI
-		case 2 : return ANSI_GREEN;
-		case 3 : return ANSI_CYAN; // non-ANSI
-		case 4 : return ANSI_RED; // non-ANSI
-		case 5 : return ANSI_MAGENTA;
-		case 6 : return ANSI_BROWN;
-		case 7 : return ANSI_GREY;
-		case 8 : return ANSI_DARKGREY;
-		case 9 : return ANSI_LIGHTBLUE; // non-ANSI
-		case 10: return ANSI_LIGHTGREEN;
-		case 11: return ANSI_LIGHTCYAN; // non-ANSI;
-		case 12: return ANSI_LIGHTRED; // non-ANSI;
-		case 13: return ANSI_LIGHTMAGENTA;
-		case 14: return ANSI_YELLOW; // non-ANSI
-		case 15: return ANSI_WHITE;
-		default: return "";
-	}
-}
 
 /**
  * Consts: Key codes for keyhit()
@@ -353,16 +321,51 @@ version (Posix) {
 	}
 }
 
+/// Function: nb_getch
+/// Non-blocking getch(). Returns 0 if no key was pressed.
+int nb_getch() {
+	if (kbhit()) return getch();
+	else return 0;
+}
+
+/// Function: getANSIColor
+/// Return ANSI color escape sequence for specified number 0-15.
+///
+/// See <Color Codes>
+RLUTIL_STRING_T getANSIColor(const(int) c) {
+	switch (c) {
+		case 0 : return ANSI_BLACK;
+		case 1 : return ANSI_BLUE; // non-ANSI
+		case 2 : return ANSI_GREEN;
+		case 3 : return ANSI_CYAN; // non-ANSI
+		case 4 : return ANSI_RED; // non-ANSI
+		case 5 : return ANSI_MAGENTA;
+		case 6 : return ANSI_BROWN;
+		case 7 : return ANSI_GREY;
+		case 8 : return ANSI_DARKGREY;
+		case 9 : return ANSI_LIGHTBLUE; // non-ANSI
+		case 10: return ANSI_LIGHTGREEN;
+		case 11: return ANSI_LIGHTCYAN; // non-ANSI;
+		case 12: return ANSI_LIGHTRED; // non-ANSI;
+		case 13: return ANSI_LIGHTMAGENTA;
+		case 14: return ANSI_YELLOW; // non-ANSI
+		case 15: return ANSI_WHITE;
+		default: return "";
+	}
+}
+
 /// Function: setColor
 /// Change color specified by number (Windows / QBasic colors).
 ///
 /// See <Color Codes>
 void setColor(int c) {
-	if (Windows == true) {
-		//HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		//SetConsoleTextAttribute(hConsole, (WORD)c);
+	version (Windows) {
+		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+		SetConsoleTextAttribute(hConsole, cast(WORD)c);
 	}
-	else {
+	
+	
+	version (Posix) {
 		printf("%s", getANSIColor(c).toStringz);
 	}
 }
@@ -376,4 +379,110 @@ void cls() {
 	else {
 		printf("%s", "\033[2J\033[H".toStringz);
 	}
+}
+
+/// Function: locate
+/// Sets the cursor position to 1-based x,y.
+void locate(int x, int y) {
+	version (Windows) {
+		COORD coord;
+		coord.X = cast(SHORT)x-1;
+		coord.Y = cast(SHORT)y-1; // Windows uses 0-based coordinates
+		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+	}
+
+	version (Posix) {
+		char* buf;
+		const(char*) format = "\033[%d;%df";
+		sprintf(buf, format, y, x);
+		printf("%s", buf);
+	}
+}
+
+/// Function: hidecursor
+/// Hides the cursor.
+void hidecursor() {
+	version (Windows) {
+		HANDLE hConsoleOutput;
+		CONSOLE_CURSOR_INFO structCursorInfo;
+		hConsoleOutput = GetStdHandle( STD_OUTPUT_HANDLE );
+		GetConsoleCursorInfo( hConsoleOutput, &structCursorInfo ); // Get current cursor size
+		structCursorInfo.bVisible = FALSE;
+		SetConsoleCursorInfo( hConsoleOutput, &structCursorInfo );
+	}
+
+	version (Posix) {
+		printf("%s", "\033[?25l".toStringz);
+	}
+}
+
+/// Function: showcursor
+/// Shows the cursor.
+void showcursor() {
+	version (Windows) {
+		HANDLE hConsoleOutput;
+		CONSOLE_CURSOR_INFO structCursorInfo;
+		hConsoleOutput = GetStdHandle( STD_OUTPUT_HANDLE );
+		GetConsoleCursorInfo( hConsoleOutput, &structCursorInfo ); // Get current cursor size
+		structCursorInfo.bVisible = TRUE;
+		SetConsoleCursorInfo( hConsoleOutput, &structCursorInfo );
+	}
+
+	version (Posix) {
+		printf("%s", "\033[?25h".toStringz);
+	}
+}
+
+/// Function: msleep
+/// Waits given number of milliseconds before continuing.
+void msleep(uint ms) {
+	version (Windows) {
+		Sleep(ms);
+	}
+	
+	version (Posix) {
+		// usleep argument must be under 1 000 000
+		if (ms > 1000) sleep(ms/1000000);
+		usleep((ms % 1000000) * 1000);
+	}
+}
+
+///// Function: trows
+///// Get the number of rows in the terminal window or -1 on error.
+//int trows() {
+	//version (Windows) {
+		//CONSOLE_SCREEN_BUFFER_INFO csbi;
+		//if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+			//return -1;
+		//else
+			//return csbi.srWindow.Bottom - csbi.srWindow.Top + 1; // Window height
+			//// return csbi.dwSize.Y; // Buffer height
+	//}
+	
+	//ttysize ts;
+	//ioctl(STDIN_FILENO, TIOCGSIZE, &ts);
+	//return ts.ts_lines;
+//}
+
+///// Function: tcols
+///// Get the number of columns in the terminal window or -1 on error.
+//int tcols() {
+	//version (Windows) {
+		//CONSOLE_SCREEN_BUFFER_INFO csbi;
+		//if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+			//return -1;
+		//else
+			//return csbi.srWindow.Right - csbi.srWindow.Left + 1; // Window width
+			//// return csbi.dwSize.X; // Buffer width
+			
+		//winsize ts;
+		//ioctl(STDIN_FILENO, TIOCGWINSZ, &ts);
+		//return ts.ws_col;
+	//}
+//}
+
+/// Function: anykey
+/// Waits until a key is pressed.
+void anykey() {
+	getch();
 }
