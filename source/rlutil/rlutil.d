@@ -13,7 +13,7 @@
  * <a href="http://github.com/danyalzia">Danyal Zia</a>
  */
 
-module rlutil;
+module rlutil.rlutil;
 
 import std.stdio : printf;
 import std.process : executeShell;
