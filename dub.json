@@ -1,5 +1,5 @@
 {
-	"name": "Drlutil",
+	"name": "drlutil",
 	"description": "D port of rlutil.h - A simple utility library for coloring the console",
 	"copyright": "Copyright © 2014, Danyal Zia",
 	"authors": ["Danyal Zia"],
