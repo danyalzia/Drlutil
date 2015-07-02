@@ -1,4 +1,4 @@
-rlutil.d - D port of rlutil.h
+drlutil.d - D port of rlutil.h
 =============================
 
 Details
