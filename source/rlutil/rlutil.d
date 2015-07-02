@@ -38,58 +38,63 @@ else
 
 version (Windows) {
 	import std.c.windows.windows;
+	
+	// Unfortunately, D2 doesn't provide these functions
+	extern (C) int getch();
+	extern (C) int kbhit();
 }
 
 version (Posix) {
 	import core.sys.posix.unistd,
 	core.sys.posix.sys.ioctl,
+	core.sys.linux.termios,
 	core.sys.posix.termios,
 	core.sys.posix.fcntl,
 	core.sys.posix.sys.time;
 }
-
-import core.sys.linux.termios, core.sys.posix.termios;
 
 alias RLUTIL_STRING_T = string;
 
 /// Function: getch
 /// Get character without waiting for Return to be pressed.
 /// Windows has this in conio.h
-int getch() {
-	// Here be magic.
-	termios oldt, newt;
-	int ch;
-	tcgetattr(STDIN_FILENO, &oldt);
-	newt = oldt;
-	newt.c_lflag &= ~(ICANON | ECHO);
-	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-	ch = getchar();
-	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-	return ch;
-}
+version (Posix) {
+	int getch() {
+		// Here be magic.
+		termios oldt, newt;
+		int ch;
+		tcgetattr(STDIN_FILENO, &oldt);
+		newt = oldt;
+		newt.c_lflag &= ~(ICANON | ECHO);
+		tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+		ch = getchar();
+		tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+		return ch;
+	}
 
-/// Function: kbhit
-/// Determines if keyboard has been hit.
-/// Windows has this in conio.h
-int kbhit() {
-	// Here be dragons.
-	static termios oldt, newt;
-	int cnt = 0;
-	tcgetattr(STDIN_FILENO, &oldt);
-	newt = oldt;
-	newt.c_lflag    &= ~(ICANON | ECHO);
-	newt.c_iflag     = 0; // input mode
-	newt.c_oflag     = 0; // output mode
-	newt.c_cc[VMIN]  = 1; // minimum time to wait
-	newt.c_cc[VTIME] = 1; // minimum characters to wait for
-	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-	ioctl(0, FIONREAD, &cnt); // Read count
-	timeval tv;
-	tv.tv_sec  = 0;
-	tv.tv_usec = 100;
-	select(STDIN_FILENO+1, null, null, null, &tv); // A small time delay
-	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-	return cnt; // Return number of characters
+	/// Function: kbhit
+	/// Determines if keyboard has been hit.
+	/// Windows has this in conio.h
+	int kbhit() {
+		// Here be dragons.
+		static termios oldt, newt;
+		int cnt = 0;
+		tcgetattr(STDIN_FILENO, &oldt);
+		newt = oldt;
+		newt.c_lflag    &= ~(ICANON | ECHO);
+		newt.c_iflag     = 0; // input mode
+		newt.c_oflag     = 0; // output mode
+		newt.c_cc[VMIN]  = 1; // minimum time to wait
+		newt.c_cc[VTIME] = 1; // minimum characters to wait for
+		tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+		ioctl(0, FIONREAD, &cnt); // Read count
+		timeval tv;
+		tv.tv_sec  = 0;
+		tv.tv_usec = 100;
+		select(STDIN_FILENO+1, null, null, null, &tv); // A small time delay
+		tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+		return cnt; // Return number of characters
+	}
 }
 
 /// Function: gotoxy
@@ -383,11 +388,13 @@ void cls() {
 
 /// Function: locate
 /// Sets the cursor position to 1-based x,y.
+//void locate(int x, int y) {
 void locate(int x, int y) {
 	version (Windows) {
+		import std.conv;
 		COORD coord;
-		coord.X = cast(SHORT)x-1;
-		coord.Y = cast(SHORT)y-1; // Windows uses 0-based coordinates
+		coord.X = to!(short)(x-1);
+		coord.Y = to!(short)(y-1); // Windows uses 0-based coordinates
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
 	}
 
