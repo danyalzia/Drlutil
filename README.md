@@ -12,7 +12,7 @@ Installation
 Clone the repository:
 
 ```
-$ git clone git://github.com/danyalzia/DIrrlicht
+$ git clone git://github.com/danyalzia/Drlutil
 ```
 
 Once cloned, while in the `Drlutil` directory:
@@ -23,8 +23,6 @@ $ dub build
 
 Usage
 -----
-
-As DIrrlicht is based on Irrlicht, it tries to separate the implementation from user. You aren't supposed to directly instantiate several classes, but you access them through different managers. Following is the short example that can be used to test DIrrlicht, it shows the simple window with a black background that can be minimized, resized and closed:
 
 --------------------------------------------
 ```D
